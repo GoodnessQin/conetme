@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm blocks install scripts by default; esbuild (used by Vite) needs its postinstall.
+allowBuilds:
+  esbuild: true

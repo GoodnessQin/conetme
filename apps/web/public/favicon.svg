@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ConnectMe">
+  <rect width="512" height="512" rx="120" fill="#2350F5"/>
+  <line x1="160" y1="300" x2="352" y2="212" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="160" cy="300" r="74" fill="#C8F05A"/>
+  <circle cx="352" cy="212" r="74" fill="#FFFFFF"/>
+</svg>

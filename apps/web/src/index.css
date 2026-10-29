@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  body { @apply bg-white font-sans text-ink antialiased; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-brand; }
+}
+@layer components {
+  .btn { @apply inline-flex w-full items-center justify-center rounded-full bg-brand px-6 py-3.5 text-base font-bold text-white transition active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-ghost { @apply bg-transparent text-brand ring-2 ring-inset ring-brand; }
+  .input { @apply w-full rounded-2xl border border-line bg-white px-4 py-3.5 text-base placeholder:text-muted/70; }
+  .card { @apply rounded-card border border-line bg-surface p-4; }
+  .badge { @apply inline-block rounded-full bg-lime px-3 py-0.5 text-xs font-bold text-ink; }
+}
+
+/* Map pin (Leaflet divIcon) */
+.cm-pin { width: 28px; height: 28px; border-radius: 50% 50% 50% 0; background: #2350F5; border: 3px solid #C8F05A; transform: rotate(-45deg); box-shadow: 0 2px 6px rgb(0 0 0 / .35); }
+.leaflet-container { font-family: inherit; z-index: 0; }

@@ -1,0 +1,40 @@
+# Local Supabase config. Check key names against your installed CLI version (`supabase --version`).
+project_id = "connectme"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+max_frequency = "30s"
+
+# TESTING ONLY: these numbers skip SMS and accept this fixed code. Replace with your own test numbers.
+# Delete this block before the pilot.
+[auth.sms.test_otp]
+2348031234567 = "123456"
+
+# Phone OTP is sent by our Edge Function through Termii (Nigerian SMS).
+[auth.hook.send_sms]
+enabled = true
+uri = "http://host.docker.internal:54321/functions/v1/send-sms-hook"
+secrets = "env(SEND_SMS_HOOK_SECRET)"
+
+[functions.send-sms-hook]
+verify_jwt = false
