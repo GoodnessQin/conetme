@@ -4,7 +4,7 @@ import { CHECK_LABELS, CHECK_TYPES, formatNaira, type CheckType } from "@connect
 import { supabase } from "../../lib/supabase";
 import { rpc } from "../../lib/api";
 import { useMyProvider } from "../../lib/queries";
-import type { InboxRow, Progress } from "../../lib/types";
+import type { Earnings, InboxRow, Progress } from "../../lib/types";
 import { Alert, Avatar, Card, ListSkeleton, PageHeader, Pill, ProgressBar, SectionTitle, Stars, Switch, useToast, VerifiedBadge } from "../../components/ui";
 import { useAuth } from "../../auth/AuthProvider";
 import { fmtDate, timeLeft } from "../../lib/format";
@@ -22,6 +22,7 @@ export default function ProviderDashboard() {
   const prog = useQuery({ queryKey: ["progress"], queryFn: () => rpc<Progress>("my_verification_progress") });
   const prov = useMyProvider();
   const approved = prog.data?.status === "approved";
+  const earn = useQuery({ queryKey: ["earnings"], enabled: approved, queryFn: () => rpc<Earnings | null>("provider_earnings") });
   const inbox = useQuery({ queryKey: ["provider-inbox"], enabled: approved, refetchInterval: 10_000, queryFn: () => rpc<InboxRow[]>("provider_inbox") });
   const toggle = useMutation({
     mutationFn: async (v: boolean) => { const { error } = await supabase.from("providers").update({ available_today: v }).eq("id", prov.data!.id); if (error) throw error; },
@@ -103,8 +104,8 @@ export default function ProviderDashboard() {
               <Switch label="Available today" checked={d.available_today} onChange={(v) => toggle.mutate(v)} disabled={toggle.isPending} /></div>
           </div>
         </Card>
-        <Card><p className="text-sm text-muted">Jobs completed</p><p className="text-3xl font-extrabold">{d.jobs_completed}</p>
-          <p className="mt-1 text-xs text-muted">Earnings appear here after your first completed job.</p></Card>
+        <Link to="/provider/earnings" className="block rounded-card border border-line bg-white p-4 shadow-sm hover:border-brand md:p-5"><p className="text-sm text-muted">Paid out so far</p><p className="text-3xl font-extrabold">{formatNaira(earn.data?.paid_kobo ?? 0)}</p>
+          <p className="mt-1 text-xs text-muted">{(earn.data?.payable_kobo ?? 0) + (earn.data?.held_kobo ?? 0) > 0 ? `${formatNaira((earn.data?.payable_kobo ?? 0) + (earn.data?.held_kobo ?? 0))} more on the way` : `${d.jobs_completed} jobs completed`}</p></Link>
       </div>
       <Card className="mt-4 bg-surface">
         <p className="text-sm"><b>Your job limit: {formatNaira(10_000_000)}.</b> New providers can send offers up to this value. It rises as you complete jobs with good ratings.</p>

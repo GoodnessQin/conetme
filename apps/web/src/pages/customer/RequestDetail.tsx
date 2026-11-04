@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CHECK_LABELS, formatNaira, type CheckType } from "@connectme/shared";
+import { formatNaira } from "@connectme/shared";
 import { supabase } from "../../lib/supabase";
 import { messageFrom, rpc } from "../../lib/api";
 import { fmtDateTime, timeLeft } from "../../lib/format";
@@ -37,6 +37,7 @@ export default function RequestDetail() {
   });
   const open = req.data && ["open", "offers_received"].includes(req.data.status) && (!req.data.expires_at || new Date(req.data.expires_at) > new Date());
   const offers = useQuery({ queryKey: ["offers", id], refetchInterval: open ? 5000 : false, queryFn: () => rpc<OfferRow[]>("request_offers", { p_request: id }) });
+  const jobQ = useQuery({ queryKey: ["request-job", id], enabled: req.data?.status === "accepted", queryFn: async () => (await supabase.from("jobs").select("id").eq("request_id", id).maybeSingle()).data as { id: string } | null });
   const notified = useQuery({ queryKey: ["notified", id], queryFn: () => rpc<number>("request_notified_count", { p_request: id }) });
 
   const accept = useMutation({
@@ -85,7 +86,7 @@ export default function RequestDetail() {
           )}
 
           <div className="space-y-4">
-            {list.map((o) => (
+            {list.filter((o) => r.status !== "accepted" || o.offer_status === "accepted").map((o) => (
               <Card key={o.offer_id} className={o.offer_id === bestId && list.length > 1 ? "border-2 border-brand" : ""}>
                 {o.offer_id === bestId && list.length > 1 && <div className="mb-3"><Pill tone="brand">Best match</Pill></div>}
                 <div className="flex items-start gap-3">
@@ -99,13 +100,11 @@ export default function RequestDetail() {
                     <p className="text-xs text-muted">{isQuote ? "inspection fee" : "total price"}</p></div>
                 </div>
                 {o.message && <p className="mt-3 rounded-2xl bg-surface p-3 text-sm">“{o.message}”</p>}
-                <ul className="mt-3 flex flex-wrap gap-1.5">
-                  {o.badges.map((b) => <li key={b}><Pill tone="success">✓ {CHECK_LABELS[b as CheckType]?.badge ?? b}</Pill></li>)}
-                </ul>
                 <p className="mt-3 text-sm text-muted">{o.start_at ? `Can start ${fmtDateTime(o.start_at)}` : "Start time to be agreed"}</p>
                 <div className="mt-4 flex gap-3">
                   <Link to={`/customer/providers/${o.provider_id}`} className="btn btn-ghost">View profile</Link>
-                  <Button disabled={!open} onClick={() => { setErr(""); setPicked(o); }}>Accept offer</Button>
+                  {r.status === "accepted" ? (o.offer_status === "accepted" && jobQ.data ? <Link to={`/jobs/${jobQ.data.id}`} className="btn">Open job</Link> : o.offer_status === "accepted" ? <Pill tone="brand">Chosen</Pill> : null)
+                    : <Button disabled={!open} onClick={() => { setErr(""); setPicked(o); }}>Accept offer</Button>}
                 </div>
               </Card>
             ))}

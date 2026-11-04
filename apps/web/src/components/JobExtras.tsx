@@ -5,14 +5,14 @@ import { formatNaira } from "@connectme/shared";
 import { supabase } from "../lib/supabase";
 import { messageFrom, rpc } from "../lib/api";
 import { fmtDateTime } from "../lib/format";
-import type { QuoteInfo } from "../lib/types";
+import type { JobView, QuoteInfo } from "../lib/types";
 import { useAuth } from "../auth/AuthProvider";
-import { Alert, Button, Card, Field, Pill, SectionTitle, useToast } from "./ui";
+import { Alert, Button, Card, Field, Pill, SectionTitle, Switch, useToast } from "./ui";
 
 interface Msg { id: string; sender_id: string; body: string; created_at: string }
 
 /** Private chat between the customer and provider of a paid job. Contact details are blocked by the server. */
-export function ChatCard({ jobId, otherName }: { jobId: string; otherName: string }) {
+export function ChatCard({ jobId, otherName, quick = [] }: { jobId: string; otherName: string; quick?: string[] }) {
   const { session } = useAuth();
   const qc = useQueryClient();
   const [text, setText] = useState("");
@@ -32,7 +32,7 @@ export function ChatCard({ jobId, otherName }: { jobId: string; otherName: strin
     if (count > 0) rpc("mark_messages_read", { p_job: jobId }).then(() => qc.invalidateQueries({ queryKey: ["unread"] })).catch(() => undefined);
   }, [count, jobId, qc]);
   const send = useMutation({
-    mutationFn: () => rpc("send_message", { p_job: jobId, p_body: text }),
+    mutationFn: (body?: string) => rpc("send_message", { p_job: jobId, p_body: body ?? text }),
     onSuccess: () => { setText(""); setErr(""); q.refetch(); },
     onError: (e) => setErr(messageFrom(e)),
   });
@@ -54,7 +54,8 @@ export function ChatCard({ jobId, otherName }: { jobId: string; otherName: strin
         })}
         <div ref={end} />
       </div>
-      <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (text.trim()) send.mutate(); }}>
+      {quick.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{quick.map((m) => <button key={m} type="button" disabled={send.isPending} onClick={() => send.mutate(m)} className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold hover:border-brand hover:text-brand">{m}</button>)}</div>}
+      <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (text.trim()) send.mutate(undefined); }}>
         <input aria-label="Message" className="input" maxLength={500} placeholder="Write a message" value={text} onChange={(e) => setText(e.target.value)} />
         <Button type="submit" className="!w-auto !px-6" loading={send.isPending} disabled={!text.trim()}>Send</Button>
       </form>
@@ -114,6 +115,37 @@ export function QuoteCard({ jobId, isCustomer, onChanged }: { jobId: string; isC
         </div>
       )}
       {quote.status === "accepted" && quote.follow_up_job_id && <Button variant="ghost" className="mt-3" onClick={() => nav(`/jobs/${quote.follow_up_job_id}`)}>Open the installation job</Button>}
+    </Card>
+  );
+}
+
+/** Reaching each other on arrival. Numbers stay private unless a person chooses to share theirs for this job. */
+export function ContactCard({ jobId, isCustomer, otherName, contact, onChanged }: { jobId: string; isCustomer: boolean; otherName: string; contact: JobView["contact"]; onChanged: () => void }) {
+  const toast = useToast();
+  const [err, setErr] = useState("");
+  const share = useMutation({
+    mutationFn: (v: boolean) => rpc("share_phone", { p_job: jobId, p_share: v }),
+    onSuccess: (_d, v) => { toast(v ? `Your number is visible to ${otherName} for this job.` : "Your number is hidden again."); onChanged(); },
+    onError: (e) => setErr(messageFrom(e)),
+  });
+  if (!contact) return null;
+  return (
+    <Card>
+      <SectionTitle>Reaching {otherName} on arrival</SectionTitle>
+      {contact.other_phone ? (
+        <div className="mb-3 rounded-2xl bg-lime/40 p-3">
+          <p className="text-sm font-semibold">{otherName} shared their number for this job.</p>
+          <a href={`tel:${contact.other_phone}`} className="btn mt-2">Call {otherName}</a>
+        </div>
+      ) : (
+        <p className="mb-3 text-sm text-muted">{otherName} has not shared a phone number. Use the chat below. You can also share yours if you would like a call.</p>
+      )}
+      <div className="flex items-center justify-between gap-4 rounded-2xl bg-surface p-3">
+        <div><p className="text-sm font-bold">Share my number with {otherName}</p><p className="text-xs text-muted">Only for this job. It is hidden again 24 hours after the job ends. You can switch it off any time.</p></div>
+        <Switch label={`Share my number with ${otherName}`} checked={contact.i_shared} onChange={(v) => { setErr(""); share.mutate(v); }} disabled={share.isPending} />
+      </div>
+      {err && <p role="alert" className="mt-2 text-sm text-danger">{err}</p>}
+      {isCustomer && <p className="mt-3 text-xs text-muted">Calling and messaging outside ConnectMe is your choice, but payment protection, ratings and dispute help only cover bookings paid through ConnectMe.</p>}
     </Card>
   );
 }

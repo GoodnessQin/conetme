@@ -24,15 +24,25 @@ import Account from "./pages/Account";
 import Legal from "./pages/Legal";
 import PaymentReturn from "./pages/PaymentReturn";
 import ProviderEarnings from "./pages/provider/Earnings";
+import ProviderProfilePage, { ProviderPreview } from "./pages/provider/Profile";
 import Finance from "./pages/admin/Finance";
-import AdminProviders from "./pages/admin/Providers";
+import People from "./pages/admin/People";
+import CustomerDetail from "./pages/admin/CustomerDetail";
+import Activity from "./pages/admin/Activity";
+import AdminRequestDetail from "./pages/admin/RequestDetail";
+import AdminJobDetail from "./pages/admin/JobDetail";
 import AdminServices from "./pages/admin/Services";
 
 function HomeRedirect() {
-  const { profile, isStaff, loading } = useAuth();
+  const { profile, roles, isStaff, loading } = useAuth();
   if (loading) return <Spinner />;
+  // Existing profile with a name: straight to the marketplace. New number: create the profile first.
   if (!profile?.full_name) return <Navigate to="/welcome" replace />;
-  return <Navigate to={isStaff ? "/admin" : "/customer"} replace />;
+  let last = "";
+  try { last = localStorage.getItem("cm_mode") ?? ""; } catch { /* private mode */ }
+  if (last === "provider" && roles.includes("provider")) return <Navigate to="/provider" replace />;
+  if (last === "admin" && isStaff) return <Navigate to="/admin" replace />;
+  return <Navigate to={isStaff && last !== "customer" ? "/admin" : "/customer"} replace />;
 }
 function WithShell() { return <Shell><Outlet /></Shell>; }
 
@@ -58,6 +68,8 @@ export default function App() {
             <Route path="/account" element={<Account />} />
             <Route path="/payments/return" element={<PaymentReturn />} />
             <Route path="/provider/earnings" element={<ProviderEarnings />} />
+            <Route path="/provider/profile" element={<ProviderProfilePage />} />
+            <Route path="/provider/preview" element={<ProviderPreview />} />
             <Route path="/provider" element={<ProviderDashboard />} />
             <Route path="/provider/register" element={<Register />} />
             <Route path="/provider/requests" element={<ProviderRequests />} />
@@ -69,7 +81,12 @@ export default function App() {
               <Route path="/admin/disputes" element={<Disputes />} />
               <Route path="/admin/services" element={<AdminServices />} />
               <Route path="/admin/finance" element={<Finance />} />
-              <Route path="/admin/providers" element={<AdminProviders />} />
+              <Route path="/admin/people" element={<People />} />
+              <Route path="/admin/providers" element={<Navigate to="/admin/people" replace />} />
+              <Route path="/admin/customers/:id" element={<CustomerDetail />} />
+              <Route path="/admin/activity" element={<Activity />} />
+              <Route path="/admin/requests/:id" element={<AdminRequestDetail />} />
+              <Route path="/admin/jobs/:id" element={<AdminJobDetail />} />
             </Route>
           </Route>
         </Route>

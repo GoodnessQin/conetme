@@ -3,6 +3,8 @@ import { normalizeNgPhone } from "@connectme/shared";
 import { supabase } from "../lib/supabase";
 import { messageFrom, uploadFile } from "../lib/api";
 import { useAuth } from "../auth/AuthProvider";
+import { useMyProvider } from "../lib/queries";
+import { Link } from "react-router-dom";
 import { Alert, Avatar, Button, Card, Field, PageHeader, Switch, useToast } from "../components/ui";
 
 export default function Account() {
@@ -12,6 +14,8 @@ export default function Account() {
   const [name, setName] = useState(profile?.full_name ?? "");
   const [cName, setCName] = useState(profile?.emergency_contact_name ?? "");
   const [cPhone, setCPhone] = useState(profile?.emergency_contact_phone?.replace("+234", "0") ?? "");
+  const prov = useMyProvider();
+  const lockedPhoto = !!prov.data && !["draft", "needs_info"].includes(prov.data.status);
   const [sms, setSms] = useState(profile?.sms_alerts !== false);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false); const [up, setUp] = useState(false);
 
@@ -45,7 +49,8 @@ export default function Account() {
           <Avatar name={name || "You"} path={profile?.avatar_path} size={72} />
           <div>
             <input ref={file} type="file" accept="image/*" className="sr-only" aria-label="Profile photo" onChange={(e) => { const x = e.target.files?.[0]; if (x) photo(x); e.target.value = ""; }} />
-            <Button variant="ghost" className="!w-auto !px-5 !py-2.5 !text-sm" loading={up} onClick={() => file.current?.click()}>{profile?.avatar_path ? "Change photo" : "Add photo"}</Button>
+            <Button variant="ghost" className="!w-auto !px-5 !py-2.5 !text-sm" loading={up} disabled={lockedPhoto} onClick={() => file.current?.click()}>{profile?.avatar_path ? "Change photo" : "Add photo"}</Button>
+            {lockedPhoto && <p className="mt-1 max-w-[220px] text-xs text-muted">Verified providers request photo changes from their <Link to="/provider/profile" className="font-semibold text-brand">provider profile</Link>, so customers can trust the face they see.</p>}
           </div>
         </div>
         <Field label="Full name" htmlFor="n" hint="Use the name on your ID. Providers see only your first name, after you pay."><input id="n" className="input" value={name} onChange={(e) => setName(e.target.value)} /></Field>

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { STAFF_ROLES, type AppRole } from "@connectme/shared";
 import { supabase } from "../lib/supabase";
@@ -21,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const lastUser = useRef<string | null>(null);
 
   const load = useCallback(async (s: Session | null) => {
     if (!s) {
@@ -40,14 +41,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
     supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
+      lastUser.current = data.session?.user.id ?? null;
       setSession(data.session);
       await load(data.session);
       if (active) setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+      const uid = s?.user.id ?? null;
+      // A different person just signed in: wait for their profile before any screen decides where to send them.
+      // (Token refreshes for the same person do not show a loading state.)
+      if (uid && uid !== lastUser.current) setLoading(true);
+      lastUser.current = uid;
       // defer: never call supabase inside the auth callback directly
-      setTimeout(() => void load(s), 0);
+      setTimeout(() => { void load(s).finally(() => { if (active) setLoading(false); }); }, 0);
     });
     return () => {
       active = false;

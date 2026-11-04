@@ -42,6 +42,7 @@ export interface JobView {
   events: { event: string; note: string | null; at: string }[];
   provider: { id: string; name: string; avatar: string | null; rating: number; rating_count: number; jobs: number; level: number; badges: string[] } | null;
   customer: { first_name: string } | null;
+  contact: { i_shared: boolean; other_shared: boolean; other_phone: string | null } | null;
   offer: { message: string | null; start_at: string | null } | null;
   location: { lat: number; lng: number } | null;
   my_review: { stars: number; comment: string | null } | null;
@@ -51,7 +52,8 @@ export interface JobView {
 export interface PublicProvider {
   id: string; name: string; bio: string | null; years: number | null; avatar: string | null; rating: number; rating_count: number; jobs: number; level: number;
   area: string | null; member_since: string; badges: string[]; services: { name: string; slug: string; typical_price_kobo: number | null }[];
-  portfolio: { path: string; caption: string | null }[]; reviews: { stars: number; comment: string | null; at: string; by: string }[];
+  portfolio: { path: string; caption: string | null }[]; reviews: { stars: number; comment: string | null; at: string; by: string; tags: string[]; service: string | null }[];
+  rating_breakdown: Record<"1" | "2" | "3" | "4" | "5", number>; top_tags: { tag: string; n: number }[];
 }
 export interface NotificationRow { id: string; type: string; payload: Record<string, unknown>; read_at: string | null; created_at: string }
 
@@ -63,3 +65,9 @@ export interface QuoteInfo {
   quote: { id: string; price_kobo: number; scope: string; status: string; valid_until: string; follow_up_job_id: string | null } | null;
   is_quote_service: boolean; can_send: boolean; is_follow_up: boolean;
 }
+
+export interface MatchProvider {
+  provider_id: string; name: string; avatar_path: string | null; rating_avg: number; rating_count: number; jobs_completed: number; years_experience: number | null; level: number;
+  distance_km: number; typical_price_kobo: number; price_low_kobo: number; price_high_kobo: number; available_today: boolean; within_budget: boolean; match_score: number;
+}
+export interface ChangeRequest { id: string; kind: "area" | "service" | "photo"; status: "pending" | "approved" | "rejected"; payload: Record<string, unknown>; note: string | null; created_at: string }

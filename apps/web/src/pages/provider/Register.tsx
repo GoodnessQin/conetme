@@ -393,7 +393,7 @@ function WorkStep({ p, next, back, refresh, userId }: StepProps & { userId: stri
       for (let i = 0; i < batch.length; i++) {
         setProg(batch.length > 1 ? `Uploading ${i + 1} of ${batch.length}…` : "");
         const path = await uploadFile("portfolio", userId, "work", batch[i]!);
-        const { error } = await supabase.from("portfolio_items").insert({ provider_id: prov.data!.id, service_id: ps?.[0]?.service_id ?? services[0]?.id, photo_path: path, caption: caption.trim() || "Past work" });
+        const { error } = await supabase.from("portfolio_items").insert({ provider_id: prov.data!.id, service_id: ps?.[0]?.service_id ?? services[0]?.id, photo_path: path, caption: batch.length === 1 ? caption.trim() || null : null });
         if (error) throw error;
         await work.refetch();
       }

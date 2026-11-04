@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,7 +22,7 @@ function friendly(message: string, login: boolean): string {
 
 export default function SignIn() {
   const nav = useNavigate();
-  const login = useSearchParams()[0].get("mode") === "login";
+  const login = false; // one flow for new and returning people: the code decides, then the profile decides where they land
   const { session, loading } = useAuth();
   const [phone, setPhone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +66,8 @@ export default function SignIn() {
       )}
       {!phone ? (
         <form className="mt-10" onSubmit={pf.handleSubmit((v) => sendCode(v.phone))} noValidate>
-          <h1 className="text-3xl font-extrabold tracking-tight">{login ? "Welcome back" : "Create your account"}</h1>
-          <p className="mt-2 text-muted">{login ? "Enter the phone number you registered with. We will text you a 6-digit code." : "Enter your phone number. We will text you a 6-digit code. No password needed."}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight">Enter your phone number</h1>
+          <p className="mt-2 text-muted">We will text you a 6-digit code. New or returning, it is the same step. No password needed.</p>
           <label htmlFor="phone" className="mt-6 block text-sm font-medium">Phone number</label>
           <div className="mt-1 flex gap-2">
             <span className="input w-auto select-none text-muted">+234</span>
@@ -75,8 +75,7 @@ export default function SignIn() {
           </div>
           {pf.formState.errors.phone && <p role="alert" className="mt-2 text-sm text-danger">{pf.formState.errors.phone.message}</p>}
           {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
-          <button className="btn mt-6" disabled={pf.formState.isSubmitting}>{login ? "Send login code" : "Send code"}</button>
-          <p className="mt-5 text-center text-sm text-muted">{login ? "New to ConnectMe? " : "Already have an account? "}<Link className="font-bold text-brand" to={`/sign-in?mode=${login ? "signup" : "login"}`}>{login ? "Create an account" : "Log in"}</Link></p>
+          <button className="btn mt-6" disabled={pf.formState.isSubmitting}>Send code</button>
         </form>
       ) : (
         <form className="mt-10" onSubmit={cf.handleSubmit(verify)} noValidate>

@@ -106,3 +106,8 @@ Nobody can review or approve their own provider application: use a separate admi
 Run `supabase/migrations/20261027000001_phase4_payments_ledger_chat_quotes.sql` after the earlier migrations.
 The app keeps working in test mode with no server functions. See `supabase/functions/README.md` to add Paystack, SMS and identity checks one by one,
 and `docs/GO-LIVE-CHECKLIST.md` before taking real money.
+
+## Phase 5 (monitoring, profiles, matching, ratings)
+
+Run `supabase/migrations/20261028000001_phase5_monitoring_profiles_matching.sql` after the earlier migrations.
+It fixes a permission bug in job, dispute and review checks, so run it before real users arrive. See `docs/DOMAIN-AND-DEPLOY.md` for the domain and deploy steps.

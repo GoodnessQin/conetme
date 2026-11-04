@@ -16,7 +16,13 @@ function describe(n: NotificationRow): { title: string; body: string; to?: strin
     case "job_paid": return { title: "Payment is held. The job is confirmed", body: "You can now see the address. Arrive on time and ask for the customer’s door code.", to: `/jobs/${p.job_id}` };
     case "job_update": return { title: `${p.provider ?? "Your provider"}: ${({ on_the_way: "on the way", arrived: "arrived", working: "work started", completed_by_provider: "work complete. Please confirm" } as Record<string, string>)[p.status ?? ""] ?? "update"}`, body: p.status === "completed_by_provider" ? "Check the work, then confirm to release payment and rate your provider." : "Open the job to follow progress.", to: `/jobs/${p.job_id}` };
     case "payment_released": return { title: "Payment released to you", body: "The customer confirmed the job. Your payout is recorded and will be sent to your bank account.", to: `/jobs/${p.job_id}` };
-    case "review_received": return { title: `You received a ${p.stars}-star rating`, body: "Ratings shape your ranking. Open the job to see it.", to: `/jobs/${p.job_id}` };
+    case "review_received": return p.for === "provider"
+      ? { title: `New ${p.stars}-star review`, body: "A customer rated your work. See it on your profile under Reviews.", to: "/provider/profile#reviews" }
+      : { title: `A provider rated you ${p.stars} stars`, body: "Open the job to see their rating.", to: `/jobs/${p.job_id}` };
+    case "account_suspended": return { title: "Your account is suspended", body: p.reason ?? "Contact ConnectMe support." };
+    case "account_reinstated": return { title: "Your account is active again", body: p.reason ?? "You can use ConnectMe as before." };
+    case "change_approved": return { title: "Your profile change was approved", body: "It is now live on your profile.", to: "/provider/profile" };
+    case "change_rejected": return { title: "Your profile change was not approved", body: p.reason ?? "Open your profile for details.", to: "/provider/profile" };
     case "dispute_opened": return { title: "A problem was reported on a job", body: "Payment stays held while ConnectMe support reviews it. You will be told the outcome.", to: `/jobs/${p.job_id}` };
     case "dispute_resolved": return { title: "A reported problem was resolved", body: p.note ?? "Open the job to see the decision.", to: `/jobs/${p.job_id}` };
     case "new_message": return { title: "New message about your job", body: "Open the job to read and reply.", to: `/jobs/${p.job_id}` };
@@ -36,6 +42,16 @@ function describe(n: NotificationRow): { title: string; body: string; to?: strin
   }
 }
 
+function grouped(rows: NotificationRow[]): { n: NotificationRow; count: number }[] {
+  const out: { n: NotificationRow; count: number }[] = [];
+  const key = (x: NotificationRow) => `${x.type}:${String((x.payload as Record<string, unknown>).job_id ?? "")}`;
+  for (const n of rows) {
+    const last = out[out.length - 1];
+    if (last && n.type === "new_message" && key(last.n) === key(n)) last.count++; else out.push({ n, count: 1 });
+  }
+  return out;
+}
+
 export default function Notifications() {
   const qc = useQueryClient();
   const q = useQuery({
@@ -53,12 +69,12 @@ export default function Notifications() {
       {q.isLoading && <ListSkeleton />}
       {q.data?.length === 0 && <EmptyState title="Nothing yet" body="Updates about your requests, offers and verification appear here." />}
       <div className="space-y-2">
-        {q.data?.map((n) => {
+        {grouped(q.data ?? []).map(({ n, count }) => {
           const d = describe(n);
           const inner = (
             <div className={`flex gap-3 rounded-card border p-4 ${n.read_at ? "border-line bg-white" : "border-brand/40 bg-brand-50"}`}>
               <span className={`mt-1.5 h-2.5 w-2.5 flex-none rounded-full ${n.read_at ? "bg-line" : "bg-brand"}`} />
-              <div className="min-w-0 flex-1"><p className="font-bold">{d.title}</p>{d.body && <p className="text-sm text-muted">{d.body}</p>}<p className="mt-1 text-xs text-muted">{timeAgo(n.created_at)}</p></div>
+              <div className="min-w-0 flex-1"><p className="font-bold">{d.title}{count > 1 ? ` (${count})` : ""}</p>{d.body && <p className="text-sm text-muted">{d.body}</p>}<p className="mt-1 text-xs text-muted">{timeAgo(n.created_at)}</p></div>
             </div>
           );
           return d.to ? <Link key={n.id} to={d.to} className="block">{inner}</Link> : <div key={n.id}>{inner}</div>;

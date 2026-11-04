@@ -8,7 +8,7 @@ import { Alert, Button, Card, Dialog, EmptyState, ListSkeleton, PageHeader, Pill
 interface Row { provider_id: string; name: string; phone: string | null; status: string; level: number; rating_avg: number; rating_count: number; jobs_completed: number; services: string[]; area_name: string | null; created_at: string; case_id: string | null; active_jobs: number }
 const TONE: Record<string, "success" | "warning" | "danger" | "neutral" | "brand"> = { approved: "success", suspended: "danger", submitted: "warning", in_review: "brand", needs_info: "warning", rejected: "danger", draft: "neutral" };
 
-export default function AdminProviders() {
+export default function AdminProviders({ embedded = false }: { embedded?: boolean }) {
   const qc = useQueryClient();
   const toast = useToast();
   const [query, setQuery] = useState("");
@@ -22,7 +22,7 @@ export default function AdminProviders() {
   });
   return (
     <>
-      <PageHeader title="Providers" subtitle="Everyone who has registered. Search by name or phone number." />
+      {!embedded && <PageHeader title="Providers" subtitle="Everyone who has registered. Search by name or phone number." />}
       <label htmlFor="ps" className="sr-only">Search providers</label>
       <input id="ps" className="input mb-4" placeholder="Search by name or phone number" value={query} onChange={(e) => setQuery(e.target.value)} />
       {q.isLoading && <ListSkeleton />}

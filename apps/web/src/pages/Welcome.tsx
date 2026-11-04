@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +13,9 @@ const schema = z.object({ full_name: fullNameSchema });
 
 export default function Welcome() {
   const nav = useNavigate();
-  const { session, profile, refresh } = useAuth();
+  const { session, profile, loading, refresh } = useAuth();
+  // Returning users who already gave their name never need this page.
+  useEffect(() => { if (!loading && profile?.full_name) nav("/app", { replace: true }); }, [loading, profile?.full_name, nav]);
   const [intent, setIntent] = useState<"customer" | "provider">("customer");
   const [error, setError] = useState<string | null>(null);
   const { register, handleSubmit, formState } = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues: { full_name: profile?.full_name ?? "" } });

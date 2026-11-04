@@ -8,7 +8,7 @@ export default function Landing() {
   if (!loading && session) return <Navigate to="/app" replace />;
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-8">
-      <div className="flex items-center justify-between"><Logo size={32} /><Link to="/sign-in?mode=login" className="text-sm font-bold text-brand">Log in</Link></div>
+      <div className="flex items-center justify-between"><Logo size={32} /><Link to="/sign-in" className="text-sm font-bold text-brand">Log in</Link></div>
       <div className="my-auto py-12">
         <h1 className="text-4xl font-extrabold leading-tight tracking-tight">Verified pros, at your door.</h1>
         <p className="mt-4 text-lg text-muted">Post what you need. Verified plumbers, caterers and solar installers send you offers. You compare, choose, and pay only when the job is done.</p>
@@ -18,9 +18,8 @@ export default function Landing() {
           ))}
         </ul>
       </div>
-      <Link to="/sign-in?mode=signup" className="btn">Create account</Link>
-      <Link to="/sign-in?mode=login" className="btn btn-ghost mt-3">Log in</Link>
-      <p className="mt-4 text-center text-sm text-muted">You sign in with your phone number and a code we text you. No password to remember.</p>
+      <Link to="/sign-in" className="btn">Continue with phone number</Link>
+      <p className="mt-4 text-center text-sm text-muted">New or returning, you continue with your phone number and a code we text you. No password to remember.</p>
       <LegalLinks className="mt-3 text-center" />
     </main>
   );

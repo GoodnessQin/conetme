@@ -1,14 +1,15 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CHECK_LABELS, formatNaira, type CheckType } from "@connectme/shared";
+import { formatNaira } from "@connectme/shared";
 import { invokeFn, messageFrom, rpc } from "../lib/api";
 import { fmtDateTime } from "../lib/format";
 import { usePaymentMode, useServices, useTestPayments } from "../lib/queries";
 import type { JobView } from "../lib/types";
 import { DetailsList } from "../components/DynamicFields";
 import { MapPicker, mapsLinks } from "../components/MapPicker";
-import { ChatCard, QuoteCard } from "../components/JobExtras";
+import { ChatCard, ContactCard, QuoteCard } from "../components/JobExtras";
+import { CUSTOMER_TAGS, PROVIDER_TAGS, RATING_LABELS, RatingInput, StarRow } from "../components/Rating";
 import { Alert, Avatar, Button, Card, Dialog, EmptyState, KeyValue, ListSkeleton, PageHeader, Pill, SectionTitle, Stars, useToast, VerifiedBadge } from "../components/ui";
 
 type Tone = "neutral" | "brand" | "success" | "warning" | "danger";
@@ -23,22 +24,15 @@ const STAGE_OF: Record<string, number> = { awaiting_payment: 0, paid_held: 1, on
 const REASONS = [["poor_work", "The work was poor or incomplete"], ["no_show", "The other person did not show up"], ["price_changed", "The price was changed"], ["damage", "Something was damaged"], ["safety", "I felt unsafe"], ["other", "Something else"]] as const;
 const ACTIVE = ["paid_held", "on_the_way", "arrived", "working", "completed_by_provider"];
 
-function RatingCard({ jobId, mine, who, onDone }: { jobId: string; mine: { stars: number; comment: string | null } | null; who: string; onDone: () => void }) {
+function RatingCard({ jobId, mine, who, forProvider, onDone }: { jobId: string; mine: { stars: number; comment: string | null } | null; who: string; forProvider: boolean; onDone: () => void }) {
   const toast = useToast();
-  const [stars, setStars] = useState(0); const [comment, setComment] = useState(""); const [err, setErr] = useState("");
-  const send = useMutation({ mutationFn: () => rpc("submit_review", { p_job: jobId, p_stars: stars, p_comment: comment }), onSuccess: () => { toast("Thank you. Your rating is saved."); onDone(); }, onError: (e) => setErr(messageFrom(e)) });
-  if (mine) return <Card><SectionTitle>Your rating</SectionTitle><p className="text-xl text-amber-500" aria-label={`${mine.stars} out of 5`}>{"★".repeat(mine.stars)}<span className="text-line">{"★".repeat(5 - mine.stars)}</span></p>{mine.comment && <p className="mt-1 text-sm">{mine.comment}</p>}</Card>;
-  return (
-    <Card className="border-2 border-lime">
-      <SectionTitle>How was it with {who}?</SectionTitle>
-      <div className="mb-3 flex gap-1" role="radiogroup" aria-label="Rating">
-        {[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" role="radio" aria-checked={stars === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} onClick={() => setStars(n)} className={`text-4xl leading-none ${n <= stars ? "text-amber-500" : "text-line"}`}>★</button>)}
-      </div>
-      <textarea aria-label="Comment" rows={3} className="input" maxLength={400} placeholder="What went well, or what could be better? No phone numbers." value={comment} onChange={(e) => setComment(e.target.value)} />
-      {err && <div className="mt-2"><Alert tone="danger">{err}</Alert></div>}
-      <Button className="mt-3" disabled={!stars} loading={send.isPending} onClick={() => { setErr(""); send.mutate(); }}>Submit rating</Button>
-    </Card>
-  );
+  const [err, setErr] = useState("");
+  const send = useMutation({
+    mutationFn: (v: { stars: number; comment: string; tags: string[] }) => rpc("submit_review", { p_job: jobId, p_stars: v.stars, p_comment: v.comment, p_tags: v.tags }),
+    onSuccess: () => { toast("Thank you. Your rating is saved."); onDone(); }, onError: (e) => setErr(messageFrom(e)),
+  });
+  if (mine) return <Card><SectionTitle>Your rating</SectionTitle><div className="flex items-center gap-2"><StarRow value={mine.stars} size={22} /><b>{RATING_LABELS[mine.stars]}</b></div>{mine.comment && <p className="mt-1 text-sm">{mine.comment}</p>}</Card>;
+  return <Card className="border-2 border-lime"><RatingInput who={who} tags={forProvider ? PROVIDER_TAGS : CUSTOMER_TAGS} busy={send.isPending} error={err} onSubmit={(v) => { setErr(""); send.mutate(v); }} /></Card>;
 }
 
 export default function JobDetail() {
@@ -187,11 +181,12 @@ export default function JobDetail() {
             </Card>
           )}
 
-          {paid && status !== "cancelled" && v.role !== "staff" && <ChatCard jobId={id} otherName={otherName} />}
+          {paid && ACTIVE.includes(status) && v.role !== "staff" && <ContactCard jobId={id} isCustomer={isCust} otherName={otherName} contact={v.contact} onChanged={refresh} />}
+          {paid && status !== "cancelled" && v.role !== "staff" && <ChatCard jobId={id} otherName={otherName} quick={isCust ? ["The gate is open", "I am at the door", "Please wait a few minutes"] : ["I have arrived", "I am outside the gate", "Running 10 minutes late"]} />}
           {status === "paid_out" && <QuoteCard jobId={id} isCustomer={isCust} onChanged={refresh} />}
 
           {/* ---------- rating ---------- */}
-          {status === "paid_out" && <RatingCard jobId={id} mine={v.my_review} who={otherName} onDone={refresh} />}
+          {status === "paid_out" && <RatingCard jobId={id} mine={v.my_review} who={otherName} forProvider={isCust} onDone={refresh} />}
           {isCust && status === "paid_out" && v.provider && (
             <Button variant="ghost" onClick={() => nav(`/customer/new/${v.service.slug}`, { state: { preferred: { id: v.provider!.id, name: v.provider!.name } } })}>Book {otherName} again</Button>
           )}
@@ -210,7 +205,7 @@ export default function JobDetail() {
             <Card>
               <div className="flex items-center gap-3"><Avatar name={v.provider.name} path={v.provider.avatar} size={56} /><div><p className="font-bold leading-tight">{v.provider.name}</p><VerifiedBadge level={v.provider.level} /></div></div>
               <div className="mt-2"><Stars value={v.provider.rating} count={v.provider.rating_count} /></div>
-              <ul className="mt-3 space-y-1.5">{v.provider.badges.map((b) => <li key={b} className="text-sm"><span className="text-success">✓</span> {CHECK_LABELS[b as CheckType]?.badge ?? b}</li>)}</ul>
+
               <Link to={`/customer/providers/${v.provider.id}`} className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">View full profile</Link>
             </Card>
           )}
