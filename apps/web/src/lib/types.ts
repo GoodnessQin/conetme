@@ -1,13 +1,13 @@
 import type { AppRole } from "@connectme/shared";
 export type { AppRole };
 
-export interface Profile { id: string; full_name: string | null; phone: string | null; email: string | null; customer_verified: boolean; avatar_path?: string | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; sms_alerts?: boolean }
+export interface Profile { id: string; full_name: string | null; phone: string | null; email: string | null; customer_verified: boolean; terms_accepted_at?: string | null; avatar_path?: string | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; sms_alerts?: boolean }
 export interface FieldDef { name: string; label: string; type: "text" | "textarea" | "number" | "select" | "multiselect"; required?: boolean; options?: string[] }
-export interface Service { id: string; slug: string; name: string; description: string | null; sort_order: number; pricing_mode: "fixed" | "estimate" | "quote"; form_schema: FieldDef[]; inspection_fee_kobo: number; keywords: string[]; credential_requirements: { items: string[]; note: string }; milestone_template?: { label: string; percent: number }[]; job_cap_kobo?: number; active?: boolean }
-export interface Area { id: string; name: string; city: string; lat: number; lng: number }
+export interface Service { id: string; slug: string; name: string; description: string | null; sort_order: number; pricing_mode: "fixed" | "estimate" | "quote"; form_schema: FieldDef[]; inspection_fee_kobo: number; keywords: string[]; credential_requirements: { items: string[]; note: string }; milestone_template?: { label: string; percent: number }[]; job_cap_kobo?: number; active?: boolean; image_path?: string | null }
+export interface Area { id: string; name: string; city: string; state: string; lat: number; lng: number }
 export type ProviderStatus = "draft" | "submitted" | "in_review" | "needs_info" | "approved" | "rejected" | "suspended";
 export interface ProviderRow {
-  id: string; display_name: string; bio: string | null; years_experience: number | null; base_area_id: string | null;
+  id: string; display_name: string; slug?: string; tagline?: string | null; banner_path?: string | null; bio: string | null; years_experience: number | null; base_area_id: string | null;
   radius_km: number; status: ProviderStatus; level: number; available_today: boolean; rating_avg: number; rating_count: number; jobs_completed: number;
 }
 export interface Progress {
@@ -54,6 +54,7 @@ export interface PublicProvider {
   area: string | null; member_since: string; badges: string[]; services: { name: string; slug: string; typical_price_kobo: number | null }[];
   portfolio: { path: string; caption: string | null }[]; reviews: { stars: number; comment: string | null; at: string; by: string; tags: string[]; service: string | null }[];
   rating_breakdown: Record<"1" | "2" | "3" | "4" | "5", number>; top_tags: { tag: string; n: number }[];
+  slug: string; banner: string | null; tagline: string | null; likes: number; liked: boolean;
 }
 export interface NotificationRow { id: string; type: string; payload: Record<string, unknown>; read_at: string | null; created_at: string }
 
@@ -70,4 +71,12 @@ export interface MatchProvider {
   provider_id: string; name: string; avatar_path: string | null; rating_avg: number; rating_count: number; jobs_completed: number; years_experience: number | null; level: number;
   distance_km: number; typical_price_kobo: number; price_low_kobo: number; price_high_kobo: number; available_today: boolean; within_budget: boolean; match_score: number;
 }
-export interface ChangeRequest { id: string; kind: "area" | "service" | "photo"; status: "pending" | "approved" | "rejected"; payload: Record<string, unknown>; note: string | null; created_at: string }
+export interface ChangeRequest { id: string; kind: "area" | "service" | "photo" | "banner"; status: "pending" | "approved" | "rejected"; payload: Record<string, unknown>; note: string | null; created_at: string }
+
+export interface MarketCard {
+  provider_id: string; slug: string; name: string; tagline: string | null; avatar_path: string | null; banner_path: string | null;
+  service_name: string; service_slug: string; service_image: string | null; area: string | null; state: string | null;
+  rating_avg: number; rating_count: number; jobs_completed: number; level: number; from_price_kobo: number | null;
+  likes: number; liked: boolean; featured: boolean; available_today: boolean;
+}
+export interface MarketBanner { id: string; title: string; subtitle: string | null; image_path: string | null; link: string | null; sort_order: number; active: boolean }

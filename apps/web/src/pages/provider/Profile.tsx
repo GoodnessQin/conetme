@@ -6,12 +6,15 @@ import { supabase } from "../../lib/supabase";
 import { messageFrom, publicUrl, rpc, uploadFile } from "../../lib/api";
 import { fmtDate } from "../../lib/format";
 import { useAreas, useMyProvider, useServices } from "../../lib/queries";
+import { LocationPicker, stateLabel } from "../../components/LocationPicker";
+import { Cover } from "../../components/ProviderCard";
+import { providerUrl, shareLink } from "../../lib/entry";
 import type { ChangeRequest, PublicProvider } from "../../lib/types";
 import { useAuth } from "../../auth/AuthProvider";
 import { RATING_LABELS, StarRow } from "../../components/Rating";
 import { Alert, Avatar, Button, Card, Dialog, Field, ListSkeleton, PageHeader, Pill, SectionTitle, Switch, useToast, VerifiedBadge } from "../../components/ui";
 
-const KIND: Record<string, string> = { area: "Area change", service: "New service", photo: "Profile photo" };
+const KIND: Record<string, string> = { area: "Area change", service: "New service", photo: "Profile photo", banner: "Profile banner" };
 
 export default function ProviderProfilePage() {
   const { session, profile } = useAuth();
@@ -40,14 +43,20 @@ export default function ProviderProfilePage() {
   if (!d || d.status !== "approved") return <Alert title="Your provider profile opens once you are approved">Finish your application on the dashboard. After approval you can manage your profile, prices and work photos here.</Alert>;
   const refreshAll = () => { qc.invalidateQueries({ queryKey: ["my-provider"] }); qc.invalidateQueries({ queryKey: ["public-provider", pid] }); };
 
+  const [tagline, setTagline] = useState<string | null>(null);
+  const bannerFile = useRef<HTMLInputElement>(null);
+  async function sendBanner(f: File) {
+    setBusy(true); setErr("");
+    try { const path = await uploadFile("portfolio", uid, "banner", f); await submitChange.mutateAsync({ kind: "banner", payload: { banner_path: path } }); } catch (e) { setErr(messageFrom(e)); } finally { setBusy(false); }
+  }
   async function saveAbout() {
     const b = (bio ?? d!.bio ?? "").trim(); const r = Math.min(30, Math.max(1, Number(radius ?? d!.radius_km) || 10));
     if (b.length < 20) return setErr("Write at least 20 characters about your work.");
     setBusy(true); setErr("");
-    const { error } = await supabase.from("providers").update({ bio: b, radius_km: r }).eq("id", pid!);
+    const { error } = await supabase.from("providers").update({ bio: b, radius_km: r, tagline: (tagline ?? d!.tagline ?? "").trim() || null }).eq("id", pid!);
     setBusy(false);
     if (error) return setErr(messageFrom(error));
-    setBio(null); setRadius(null); refreshAll(); toast("Profile saved.");
+    setBio(null); setRadius(null); setTagline(null); refreshAll(); toast("Profile saved.");
   }
   async function savePrice(serviceId: string) {
     const n = Number(prices[serviceId]);
@@ -95,6 +104,20 @@ export default function ProviderProfilePage() {
         actions={<Link to="/provider/preview" className="btn btn-ghost !w-auto !px-5 !py-2.5 !text-sm">See it as a customer</Link>} />
       {err && <div className="mb-4"><Alert tone="danger" title="Not saved">{err}</Alert></div>}
 
+      <Card className="mb-4 overflow-hidden !p-0">
+        <Cover banner={d.banner_path} seed={d.display_name} className="h-36 md:h-44" />
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div><p className="font-bold">Your banner</p><p className="text-xs text-muted">{pendingKinds.has("banner") ? "A new banner is waiting for review." : "A wide photo of your work or brand. Our team checks it before it goes live."}</p></div>
+          <input ref={bannerFile} type="file" accept="image/*" hidden onChange={(e) => { const x = e.target.files?.[0]; if (x) void sendBanner(x); e.target.value = ""; }} />
+          <Button variant="ghost" className="!w-auto !px-5 !py-2 !text-sm" loading={busy} disabled={pendingKinds.has("banner")} onClick={() => bannerFile.current?.click()}>{d.banner_path ? "Change banner" : "Add a banner"}</Button>
+        </div>
+      </Card>
+      {d.slug && (
+        <Card className="mb-4"><p className="font-bold">Your public page</p><p className="mt-1 break-all text-sm text-muted">{providerUrl(d.slug)}</p>
+          <div className="mt-3 flex gap-2"><Button variant="soft" className="!w-auto !px-5 !py-2 !text-sm" onClick={async () => { const r = await shareLink(`${d.display_name} on ConnectMe`, `Book me on ConnectMe: ${d.display_name}`, providerUrl(d.slug!)); if (r === "copied") toast("Link copied. Paste it into WhatsApp or Instagram."); }}>Share my page</Button>
+            <Link to="/provider/preview" className="btn btn-ghost !w-auto !px-5 !py-2 !text-sm">Preview</Link></div>
+          <p className="mt-2 text-xs text-muted">Customers who open it can see your reviews and book you without creating an account first.</p></Card>
+      )}
       <Card>
         <div className="flex items-center gap-4">
           <Avatar name={d.display_name} path={profile?.avatar_path} size={64} />
@@ -106,9 +129,10 @@ export default function ProviderProfilePage() {
 
       <Card className="mt-4">
         <SectionTitle>About your work</SectionTitle>
+        <Field label="Tagline" htmlFor="tag" hint="One line under your name, up to 90 characters. For example: Leaks fixed the same day."><input id="tag" maxLength={90} className="input" value={tagline ?? d.tagline ?? ""} onChange={(e) => setTagline(e.target.value)} /></Field>
         <Field label="About you" htmlFor="bio" hint="Customers read this first. No phone numbers or links."><textarea id="bio" rows={4} className="input" value={bio ?? d.bio ?? ""} onChange={(e) => setBio(e.target.value)} /></Field>
         <Field label="How far will you travel? (km)" htmlFor="rad" hint="Maximum 30 km."><input id="rad" className="input max-w-[140px]" inputMode="numeric" value={radius ?? String(d.radius_km)} onChange={(e) => setRadius(e.target.value.replace(/\D/g, ""))} /></Field>
-        <Button className="!w-auto !px-6" loading={busy} disabled={bio === null && radius === null} onClick={saveAbout}>Save</Button>
+        <Button className="!w-auto !px-6" loading={busy} disabled={bio === null && radius === null && tagline === null} onClick={saveAbout}>Save</Button>
       </Card>
 
       <Card className="mt-4">
@@ -132,7 +156,7 @@ export default function ProviderProfilePage() {
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Card>
           <SectionTitle>Where you work</SectionTitle>
-          <p className="font-semibold">{area?.name ?? "Not set"}{area ? `, ${area.city}` : ""}</p>
+          <p className="font-semibold">{area?.name ?? "Not set"}{area ? `, ${area.city}, ${stateLabel(area.state)}` : ""}</p>
           <Button variant="ghost" className="mt-3 !w-auto !px-5 !py-2 !text-sm" disabled={pendingKinds.has("area")} onClick={() => { setErr(""); setDlg("area"); }}>{pendingKinds.has("area") ? "Change pending" : "Request a change"}</Button>
           <p className="mt-2 text-xs text-muted">Your area decides which requests reach you, so changes are reviewed.</p>
         </Card>
@@ -166,7 +190,7 @@ export default function ProviderProfilePage() {
       <Dialog open={dlg === "area"} onClose={() => setDlg(null)} title="Request an area change"
         footer={<><Button variant="ghost" onClick={() => setDlg(null)}>Cancel</Button><Button loading={submitChange.isPending} disabled={!areaId} onClick={() => submitChange.mutate({ kind: "area", payload: { area_id: areaId } })}>Send for review</Button></>}>
         <p className="mb-3 text-sm text-muted">Choose the area you will work from. Your address proof must support it, so a reviewer may contact you.</p>
-        <select aria-label="New area" className="input" value={areaId} onChange={(e) => setAreaId(e.target.value)}><option value="">Select…</option>{["Lagos", "Abuja"].map((c) => <optgroup key={c} label={c}>{areas.filter((a) => a.city === c && a.id !== d.base_area_id).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</optgroup>)}</select>
+        <LocationPicker value={areaId} onChange={setAreaId} exclude={d.base_area_id ? [d.base_area_id] : []} remember={false} idPrefix="chg" />
         {err && <div className="mt-3"><Alert tone="danger">{err}</Alert></div>}
       </Dialog>
 

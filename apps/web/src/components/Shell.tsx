@@ -3,16 +3,16 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Logo } from "./Logo";
 import { Avatar } from "./ui";
-import { AlertIcon, BellIcon, CoinIcon, DashboardIcon, GridIcon, HomeIcon, JobsIcon, RequestsIcon, ShieldIcon, UsersIcon, WalletIcon } from "./icons";
+import { AlertIcon, BellIcon, CoinIcon, DashboardIcon, GridIcon, HomeIcon, JobsIcon, RequestsIcon, ShieldIcon, UsersIcon, WalletIcon, SearchIcon, PinIcon } from "./icons";
 import { useAuth } from "../auth/AuthProvider";
 import { supabase } from "../lib/supabase";
 
 type Mode = "customer" | "provider" | "admin";
 type Item = { to: string; label: string; end?: boolean; icon: (p: { size?: number }) => JSX.Element };
 const NAV: Record<Mode, Item[]> = {
-  customer: [{ to: "/customer", label: "Home", end: true, icon: HomeIcon }, { to: "/customer/requests", label: "Requests", icon: RequestsIcon }, { to: "/customer/jobs", label: "Jobs", icon: JobsIcon }, { to: "/notifications", label: "Alerts", icon: BellIcon }],
+  customer: [{ to: "/customer", label: "Home", end: true, icon: HomeIcon }, { to: "/browse", label: "Explore", icon: SearchIcon }, { to: "/customer/requests", label: "Requests", icon: RequestsIcon }, { to: "/customer/jobs", label: "Jobs", icon: JobsIcon }, { to: "/notifications", label: "Alerts", icon: BellIcon }],
   provider: [{ to: "/provider", label: "Dashboard", end: true, icon: DashboardIcon }, { to: "/provider/requests", label: "Requests", icon: RequestsIcon }, { to: "/provider/jobs", label: "Jobs", icon: JobsIcon }, { to: "/provider/earnings", label: "Earnings", icon: WalletIcon }, { to: "/notifications", label: "Alerts", icon: BellIcon }],
-  admin: [{ to: "/admin", label: "Verify", end: true, icon: ShieldIcon }, { to: "/admin/people", label: "People", icon: UsersIcon }, { to: "/admin/activity", label: "Activity", icon: RequestsIcon }, { to: "/admin/finance", label: "Finance", icon: CoinIcon }, { to: "/admin/disputes", label: "Disputes", icon: AlertIcon }, { to: "/admin/services", label: "Services", icon: GridIcon }],
+  admin: [{ to: "/admin", label: "Verify", end: true, icon: ShieldIcon }, { to: "/admin/people", label: "People", icon: UsersIcon }, { to: "/admin/activity", label: "Activity", icon: RequestsIcon }, { to: "/admin/finance", label: "Finance", icon: CoinIcon }, { to: "/admin/disputes", label: "Disputes", icon: AlertIcon }, { to: "/admin/services", label: "Services", icon: GridIcon }, { to: "/admin/locations", label: "Locations", icon: PinIcon }, { to: "/admin/banners", label: "Banners", icon: GridIcon }],
 };
 
 export function useUnread() {

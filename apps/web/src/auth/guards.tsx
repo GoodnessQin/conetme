@@ -15,7 +15,7 @@ export function RequireAuth() {
 export function RequireProfile() {
   const { profile, loading } = useAuth();
   if (loading) return <Spinner />;
-  if (!profile?.full_name) return <Navigate to="/welcome" replace />;
+  if (!profile?.full_name || !profile?.terms_accepted_at) return <Navigate to="/welcome" replace />;
   return <Outlet />;
 }
 

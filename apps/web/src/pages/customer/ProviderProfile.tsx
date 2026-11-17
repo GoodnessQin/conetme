@@ -6,17 +6,20 @@ import { publicUrl, rpc } from "../../lib/api";
 import { fmtDate } from "../../lib/format";
 import type { PublicProvider } from "../../lib/types";
 import { RATING_LABELS, StarRow } from "../../components/Rating";
+import { Cover, LikeShare } from "../../components/ProviderCard";
+import { useLikes } from "../../lib/likes";
 import { Avatar, Button, Card, Dialog, EmptyState, ListSkeleton, Pill, VerifiedBadge } from "../../components/ui";
 
 type Tab = "reviews" | "work" | "about";
 
 /** How a provider looks to customers. Also used by providers to preview their own profile. */
-export function ProviderProfileView({ id, backLabel, canRequest }: { id: string; backLabel: string; canRequest: boolean }) {
+export function ProviderProfileView({ id, slug, backLabel, canRequest }: { id?: string; slug?: string; backLabel: string; canRequest: boolean }) {
+  const { liked } = useLikes();
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
   const tab = (sp.get("tab") as Tab) || "reviews";
   const [photo, setPhoto] = useState<{ src: string; caption: string | null } | null>(null);
-  const q = useQuery({ queryKey: ["public-provider", id], queryFn: () => rpc<PublicProvider | null>("public_provider", { p_provider: id }) });
+  const q = useQuery({ queryKey: ["public-provider", slug ?? id], queryFn: () => (slug ? rpc<PublicProvider | null>("public_provider_by_slug", { p_slug: slug }) : rpc<PublicProvider | null>("public_provider", { p_provider: id })) });
   if (q.isLoading) return <ListSkeleton />;
   const p = q.data;
   if (!p) return <EmptyState title="Profile not available" body="This provider is not currently verified on ConnectMe." />;
@@ -26,20 +29,27 @@ export function ProviderProfileView({ id, backLabel, canRequest }: { id: string;
   return (
     <div className="mx-auto max-w-2xl">
       <button onClick={() => nav(-1)} className="mb-3 text-sm font-medium text-brand hover:underline">‹ {backLabel}</button>
-      <Card>
+      <Card className="overflow-hidden !p-0">
+        <div className="relative">
+          <Cover banner={p.banner} seed={p.services[0]?.name ?? p.name} label={p.services[0]?.name} className="h-36 md:h-48" />
+          <div className="absolute right-3 top-3"><LikeShare id={p.id} name={p.name} slug={p.slug} liked={liked.has(p.id) || p.liked} /></div>
+        </div>
+        <div className="p-5">
         <div className="flex items-center gap-4">
           <Avatar name={p.name} path={p.avatar} size={72} />
           <div className="min-w-0">
             <h1 className="text-2xl font-extrabold leading-tight tracking-tight">{p.name}</h1>
-            <div className="mt-1"><VerifiedBadge level={p.level} /></div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1"><VerifiedBadge level={p.level} />{p.area && <span className="text-sm text-muted">{p.area}</span>}{p.likes > 0 && <span className="text-sm text-muted">♥ {p.likes} {p.likes === 1 ? "recommendation" : "recommendations"}</span>}</div>
           </div>
         </div>
+        {p.tagline && <p className="mt-4 text-ink/85">{p.tagline}</p>}
         <dl className="mt-4 grid grid-cols-3 divide-x divide-line rounded-2xl bg-surface py-3 text-center">
           <div><dt className="text-xs text-muted">Rating</dt><dd className="text-lg font-extrabold">{p.rating_count ? <>★ {Number(p.rating).toFixed(1)}</> : "New"}</dd></div>
           <div><dt className="text-xs text-muted">Jobs done</dt><dd className="text-lg font-extrabold">{p.jobs}</dd></div>
           <div><dt className="text-xs text-muted">Experience</dt><dd className="text-lg font-extrabold">{p.years ? `${p.years} yrs` : "–"}</dd></div>
         </dl>
         {canRequest && p.services[0] && <Button className="mt-4" onClick={() => nav(`/customer/new/${p.services[0]!.slug}`, { state: { preferred: { id: p.id, name: p.name } } })}>Request {p.name.split(" ")[0]} directly</Button>}
+        </div>
       </Card>
 
       <div className="mt-5 flex gap-1 border-b border-line" role="tablist">
@@ -110,4 +120,10 @@ export function ProviderProfileView({ id, backLabel, canRequest }: { id: string;
 export default function ProviderProfile() {
   const { id = "" } = useParams();
   return <ProviderProfileView id={id} backLabel="Back" canRequest />;
+}
+
+/** The shareable page at /pro/:slug. Works for visitors and signed-in people. */
+export function PublicProviderPage() {
+  const { slug = "" } = useParams();
+  return <ProviderProfileView slug={slug} backLabel="Providers" canRequest />;
 }

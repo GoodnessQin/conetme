@@ -1,8 +1,17 @@
+import { useEffect } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { peekNext, takeNext } from "./lib/entry";
 import { RequireAuth, RequireProfile, RequireStaff } from "./auth/guards";
 import { useAuth } from "./auth/AuthProvider";
 import { Shell, Spinner } from "./components/Shell";
-import Landing from "./pages/Landing";
+import Marketplace from "./pages/Marketplace";
+import Browse from "./pages/Browse";
+import Faq from "./pages/Faq";
+import BecomeProvider from "./pages/BecomeProvider";
+import { PublicShell } from "./components/PublicShell";
+import { AuthPromptProvider } from "./components/AuthPrompt";
+import AdminLocations from "./pages/admin/Locations";
+import AdminBanners from "./pages/admin/Banners";
 import SignIn from "./pages/SignIn";
 import Welcome from "./pages/Welcome";
 import Notifications from "./pages/Notifications";
@@ -12,7 +21,7 @@ import CustomerHome from "./pages/customer/Home";
 import RequestNew from "./pages/customer/RequestNew";
 import Requests from "./pages/customer/Requests";
 import RequestDetail from "./pages/customer/RequestDetail";
-import ProviderProfile from "./pages/customer/ProviderProfile";
+import ProviderProfile, { PublicProviderPage } from "./pages/customer/ProviderProfile";
 import ProviderDashboard from "./pages/provider/Dashboard";
 import Register from "./pages/provider/Register";
 import ProviderRequests from "./pages/provider/Requests";
@@ -33,11 +42,17 @@ import AdminRequestDetail from "./pages/admin/RequestDetail";
 import AdminJobDetail from "./pages/admin/JobDetail";
 import AdminServices from "./pages/admin/Services";
 
+function GoNext({ to }: { to: string }) {
+  useEffect(() => { takeNext(); }, []);
+  return <Navigate to={to} replace />;
+}
 function HomeRedirect() {
   const { profile, roles, isStaff, loading } = useAuth();
   if (loading) return <Spinner />;
   // Existing profile with a name: straight to the marketplace. New number: create the profile first.
-  if (!profile?.full_name) return <Navigate to="/welcome" replace />;
+  if (!profile?.full_name || !profile?.terms_accepted_at) return <Navigate to="/welcome" replace />;
+  const next = peekNext();
+  if (next) return <GoNext to={next} />;
   let last = "";
   try { last = localStorage.getItem("cm_mode") ?? ""; } catch { /* private mode */ }
   if (last === "provider" && roles.includes("provider")) return <Navigate to="/provider" replace />;
@@ -45,11 +60,25 @@ function HomeRedirect() {
   return <Navigate to={isStaff && last !== "customer" ? "/admin" : "/customer"} replace />;
 }
 function WithShell() { return <Shell><Outlet /></Shell>; }
+/** Public pages: visitors get the marketplace header, signed-in people keep their own navigation. */
+function PublicOrApp() {
+  const { session, loading } = useAuth();
+  if (loading) return <Spinner />;
+  return session ? <Shell><Outlet /></Shell> : <PublicShell><Outlet /></PublicShell>;
+}
 
 export default function App() {
   return (
+    <AuthPromptProvider>
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<Marketplace />} />
+      <Route element={<PublicOrApp />}>
+        <Route path="/browse" element={<Browse />} />
+        <Route path="/pro/:slug" element={<PublicProviderPage />} />
+        <Route path="/faq" element={<Faq />} />
+        <Route path="/become-a-provider" element={<BecomeProvider />} />
+        <Route path="/customer/new/:slug" element={<RequestNew />} />
+      </Route>
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/legal/:doc" element={<Legal />} />
       <Route element={<RequireAuth />}>
@@ -58,7 +87,6 @@ export default function App() {
         <Route element={<RequireProfile />}>
           <Route element={<WithShell />}>
             <Route path="/customer" element={<CustomerHome />} />
-            <Route path="/customer/new/:slug" element={<RequestNew />} />
             <Route path="/customer/requests" element={<Requests />} />
             <Route path="/customer/requests/:id" element={<RequestDetail />} />
             <Route path="/customer/providers/:id" element={<ProviderProfile />} />
@@ -80,6 +108,8 @@ export default function App() {
               <Route path="/admin/cases/:id" element={<CaseDetail />} />
               <Route path="/admin/disputes" element={<Disputes />} />
               <Route path="/admin/services" element={<AdminServices />} />
+              <Route path="/admin/locations" element={<AdminLocations />} />
+              <Route path="/admin/banners" element={<AdminBanners />} />
               <Route path="/admin/finance" element={<Finance />} />
               <Route path="/admin/people" element={<People />} />
               <Route path="/admin/providers" element={<Navigate to="/admin/people" replace />} />
@@ -93,5 +123,6 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </AuthPromptProvider>
   );
 }

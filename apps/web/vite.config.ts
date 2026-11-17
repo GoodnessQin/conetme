@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "logo-mark.svg"],
+      includeAssets: ["favicon.png", "logo-mark.png"],
       manifest: {
         name: "ConnectMe",
         short_name: "ConnectMe",

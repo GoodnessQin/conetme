@@ -11,7 +11,7 @@ export PGOPTIONS='-c search_path=public,extensions'
 psql -q -v ON_ERROR_STOP=1 -d "$DB" -f supabase/tests/supabase_stub.sql
 for f in supabase/migrations/*.sql supabase/seed.sql; do echo "apply $f"; psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$f"; done
 psql -q -d "$DB" -c "grant execute on all functions in schema auth to anon, authenticated, service_role" -c "grant select on public.services, public.areas to anon"
-for f in rls_assertions flow_assertions payments_assertions monitoring_assertions; do
+for f in rls_assertions flow_assertions payments_assertions monitoring_assertions marketplace_assertions; do
   psql -v ON_ERROR_STOP=1 -d "$DB" -f supabase/tests/$f.sql 2>&1 | grep -E "PASS|FAIL|ERROR" | sed 's/^.*NOTICE:  //'
 done
 echo "All database checks passed."

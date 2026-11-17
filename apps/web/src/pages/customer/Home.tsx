@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatNaira, interpretRequest } from "@connectme/shared";
 import { useAuth } from "../../auth/AuthProvider";
 import { useAreas, useServices } from "../../lib/queries";
+import { LocationPicker } from "../../components/LocationPicker";
 import { rpc } from "../../lib/api";
 import type { MyRequest } from "../../lib/types";
 import { Button, Card, Pill, useToast } from "../../components/ui";
@@ -55,13 +56,9 @@ export default function CustomerHome() {
           placeholder="Describe it in your own words. For example: my kitchen tap is leaking and I need a plumber today."
           className="w-full resize-none border-0 bg-transparent p-1 text-lg placeholder:text-muted/60 focus:outline-none" />
         {err && <p role="alert" className="mt-1 text-sm text-danger">{err}</p>}
-        <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3 sm:flex-row">
-          <label htmlFor="area" className="sr-only">Area</label>
-          <select id="area" value={areaId} onChange={(e) => setAreaId(e.target.value)} className="input sm:max-w-[220px]">
-            <option value="">Your area</option>
-            {["Lagos", "Abuja"].map((c) => <optgroup key={c} label={c}>{areas.filter((a) => a.city === c).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</optgroup>)}
-          </select>
-          <Button onClick={find} className="sm:flex-1">Find providers</Button>
+        <div className="mt-3 flex flex-col gap-3 border-t border-line pt-3 sm:flex-row">
+          <div className="sm:flex-1"><LocationPicker value={areaId} onChange={setAreaId} idPrefix="home" compact /></div>
+          <Button onClick={find} className="sm:self-end">Find providers</Button>
         </div>
       </div>
 

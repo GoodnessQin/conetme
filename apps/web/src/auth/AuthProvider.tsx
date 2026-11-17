@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const [p, r] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, phone, email, customer_verified, avatar_path, emergency_contact_name, emergency_contact_phone, sms_alerts").eq("id", s.user.id).maybeSingle(),
+      supabase.from("profiles").select("id, full_name, phone, email, customer_verified, avatar_path, emergency_contact_name, emergency_contact_phone, sms_alerts, terms_accepted_at").eq("id", s.user.id).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", s.user.id),
     ]);
     setProfile((p.data as Profile | null) ?? null);

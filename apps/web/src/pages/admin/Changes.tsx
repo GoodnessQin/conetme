@@ -7,9 +7,9 @@ import { DocThumb } from "../../components/DocUploader";
 import { Alert, Avatar, Button, Card, Dialog, EmptyState, ListSkeleton, Pill, useToast } from "../../components/ui";
 
 interface Change {
-  id: string; kind: "area" | "service" | "photo"; provider_id: string; provider_name: string; created_at: string;
-  payload: { area_id?: string; service_id?: string; typical_price_kobo?: number; note?: string; doc_paths?: string[]; avatar_path?: string };
-  current_area: string | null; new_area: string | null; service_name: string | null; current_avatar: string | null;
+  id: string; kind: "area" | "service" | "photo" | "banner"; provider_id: string; provider_name: string; created_at: string;
+  payload: { area_id?: string; service_id?: string; typical_price_kobo?: number; note?: string; doc_paths?: string[]; avatar_path?: string; banner_path?: string };
+  current_area: string | null; new_area: string | null; service_name: string | null; current_avatar: string | null; current_banner?: string | null;
 }
 
 export default function Changes() {
@@ -32,7 +32,7 @@ export default function Changes() {
           <Card key={c.id}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-bold">{c.provider_name} <Pill tone="brand">{c.kind === "area" ? "Area change" : c.kind === "service" ? "New service" : "Profile photo"}</Pill></p>
+                <p className="font-bold">{c.provider_name} <Pill tone="brand">{c.kind === "area" ? "Area change" : c.kind === "service" ? "New service" : c.kind === "banner" ? "Profile banner" : "Profile photo"}</Pill></p>
                 <p className="text-xs text-muted">Sent {fmtDateTime(c.created_at)}</p>
               </div>
               <div className="flex gap-2">
@@ -46,6 +46,13 @@ export default function Changes() {
                 <p><b>{c.service_name}</b> · typical price {formatNaira(c.payload.typical_price_kobo ?? 0)}</p>
                 <p className="mt-1 text-muted">{c.payload.note}</p>
                 <div className="mt-2 flex flex-wrap gap-3">{c.payload.doc_paths?.map((d) => <DocThumb key={d} path={d} alt="Credential" />)}</div>
+              </div>
+            )}
+            {c.kind === "banner" && (
+              <div className="mt-3 grid gap-3 rounded-2xl bg-surface p-3 sm:grid-cols-2">
+                <div><p className="mb-1 text-xs text-muted">Current</p>{c.current_banner ? <img src={publicUrl("portfolio", c.current_banner) ?? ""} alt="Current banner" className="h-28 w-full rounded-xl object-cover" /> : <div className="grid h-28 place-items-center rounded-xl bg-white text-xs text-muted">Default colour</div>}</div>
+                <div><p className="mb-1 text-xs text-muted">Requested</p><img src={publicUrl("portfolio", c.payload.banner_path) ?? ""} alt="Requested banner" className="h-28 w-full rounded-xl object-cover" /></div>
+                <p className="text-xs text-muted sm:col-span-2">Approve only if the image shows real work or a clean brand image, with no phone numbers, links, other people’s logos or offensive content.</p>
               </div>
             )}
             {c.kind === "photo" && (

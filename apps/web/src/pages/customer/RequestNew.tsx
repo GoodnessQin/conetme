@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatNaira } from "@connectme/shared";
@@ -8,6 +8,9 @@ import { messageFrom, rpc } from "../../lib/api";
 import { defaultSlot, fmtDateTime } from "../../lib/format";
 import { DynamicFields, validateFields, type Values } from "../../components/DynamicFields";
 import { MapPicker, type LatLng } from "../../components/MapPicker";
+import { LocationPicker, nearestArea, stateLabel } from "../../components/LocationPicker";
+import { useAuth } from "../../auth/AuthProvider";
+import { useSignInPrompt } from "../../components/AuthPrompt";
 import { Alert, Avatar, Button, Card, Field, KeyValue, ListSkeleton, PageHeader, Pill, ProgressBar, useToast } from "../../components/ui";
 
 interface Prefill { note?: string; urgent?: boolean; budgetKobo?: number | null; areaId?: string; preferred?: { id: string; name: string } }
@@ -19,6 +22,9 @@ export default function RequestNew() {
   const toast = useToast();
   const qc = useQueryClient();
   const pre = (useLocation().state ?? {}) as Prefill;
+  const { session, profile } = useAuth();
+  const prompt = useSignInPrompt();
+  const draftKey = `cm_draft_${slug}`;
   const service = useServices().data?.find((s) => s.slug === slug);
   const areas = useAreas().data ?? [];
 
@@ -50,6 +56,17 @@ export default function RequestNew() {
   const area = areas.find((a) => a.id === areaId);
   const center: LatLng = area ? { lat: area.lat, lng: area.lng } : LAGOS_DEFAULT;
 
+  // Bring back what a visitor typed before they were asked to sign in.
+  useEffect(() => {
+    if (!session || !service) return;
+    try {
+      const raw = sessionStorage.getItem(draftKey); if (!raw) return;
+      const d = JSON.parse(raw); sessionStorage.removeItem(draftKey);
+      setValues(d.values ?? {}); setAreaId(d.areaId ?? ""); setPin(d.pin ?? null); setAddress(d.address ?? ""); setTiming(d.timing ?? "schedule");
+      if (d.slot && new Date(d.slot).getTime() > Date.now()) setSlot(d.slot); setBudget(d.budget ?? ""); setMode(d.mode ?? "all"); setPicked(d.picked ?? []); setStep(4);
+    } catch { /* ignore a damaged draft */ }
+  }, [session?.user.id, service?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!service) return <ListSkeleton rows={2} />;
 
   function next() {
@@ -73,6 +90,11 @@ export default function RequestNew() {
   }
 
   async function post() {
+    if (!session) {
+      try { sessionStorage.setItem(draftKey, JSON.stringify({ values: merged, areaId, pin, address, timing, slot, budget, mode, picked })); } catch { /* private mode */ }
+      return prompt({ title: "Almost done. Create your free account", body: "We keep what you have typed. Sign in with your phone number or Google and your request is ready to send.", next: `/customer/new/${slug}` });
+    }
+    if (!profile?.full_name) return nav("/welcome");
     setBusy(true); setFormError("");
     try {
       const details: Record<string, unknown> = {};
@@ -97,7 +119,7 @@ export default function RequestNew() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader back={{ to: "/customer", label: "Home" }} title={`Request a ${service.name.toLowerCase()}`}
+      <PageHeader back={{ to: session ? "/customer" : "/", label: session ? "Home" : "Explore" }} title={`Request a ${service.name.toLowerCase()}`}
         subtitle={service.pricing_mode === "quote" ? "The provider visits first for a paid site inspection, then sends a full quote." : "Describe the job once. Verified providers send you their price."} />
       {pre.preferred && <div className="mb-4"><Alert title={`Booking ${pre.preferred.name} again`}>This request goes to {pre.preferred.name.split(" ")[0]} only. If they are unavailable, you will be told straight away.</Alert></div>}
       <div className="mb-5"><ProgressBar value={(step / 4) * 100} label={`Step ${step} of 4`} /><p className="mt-1 text-xs font-semibold text-muted">Step {step} of 4 · {["The job", "Where and when", "Budget and review", "Who should quote"][step - 1]}</p></div>
@@ -108,15 +130,12 @@ export default function RequestNew() {
         {step === 2 && (
           <>
             <Field label="Area" htmlFor="area" error={errors.area}>
-              <select id="area" className="input" value={areaId} onChange={(e) => setAreaId(e.target.value)}>
-                <option value="">Select…</option>
-                {["Lagos", "Abuja"].map((c) => <optgroup key={c} label={c}>{areas.filter((a) => a.city === c).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</optgroup>)}
-              </select>
+              <LocationPicker value={areaId} onChange={setAreaId} idPrefix="req" error={errors.area} />
               {cov.data === 0 && <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">No verified {service.name.toLowerCase()} providers cover this area yet. You can still post, but nobody will see the request until one is approved.</p>}
               {(cov.data ?? 0) > 0 && <p className="mt-2 text-sm font-semibold text-success">✓ {cov.data} verified {service.name.toLowerCase()} {cov.data === 1 ? "provider covers" : "providers cover"} this area.</p>}
             </Field>
             <Field label="Pin the exact location" error={errors.pin} hint="Only the provider you hire sees the pin, and only after you pay.">
-              <MapPicker center={center} value={pin} onChange={setPin} />
+              <MapPicker center={center} value={pin} onChange={(p) => { setPin(p); const n = nearestArea(areas, p.lat, p.lng); if (n) setAreaId(n.id); }} />
             </Field>
             <Field label="Address and directions" htmlFor="addr" error={errors.address} hint="Flat or house number, estate, street and a landmark.">
               <textarea id="addr" rows={2} className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Flat 4, 12 Admiralty Way, Lekki Phase 1, opposite the Total filling station" />
@@ -140,7 +159,7 @@ export default function RequestNew() {
               <input id="budget" className="input" inputMode="numeric" value={budget} onChange={(e) => setBudget(e.target.value.replace(/\D/g, ""))} placeholder="25000" />
             </Field>
             <KeyValue items={[
-              ["Service", service.name], ["Area", area?.name ?? ""], ["Address", address.trim()],
+              ["Service", service.name], ["Area", area ? `${area.name}, ${stateLabel(area.state)}` : ""], ["Address", address.trim()],
               ["When", timing === "asap" ? "As soon as possible" : fmtDateTime(new Date(slot).toISOString())],
               ["Budget", budget ? formatNaira(Number(budget) * 100) : "Not set"],
               ["Stays open for", timing === "asap" ? "2 hours" : "24 hours"],

@@ -51,3 +51,11 @@ insert into public.areas (name, city, state, location) values
 ('Jabi','Abuja','FCT', st_geogfromtext('SRID=4326;POINT(7.4300 9.0700)')),
 ('Gwarinpa','Abuja','FCT', st_geogfromtext('SRID=4326;POINT(7.4000 9.1100)'))
 on conflict (city, name) do nothing;
+
+-- Keywords and credential requirements for fresh installs (the migration ran before these services existed).
+update public.services set keywords = array['plumb','leak','pipe','tap','drain','toilet','water heater','borehole','pump','blocked','sink','cistern','flush'],
+  credential_requirements = '{"items":["Trade or apprenticeship certificate, if you have one","A clear photo of your tools and, if you have one, your work van"],"note":"Upload at least one document. Your three work photos in the next step are reviewed alongside it."}' where slug = 'plumber';
+update public.services set keywords = array['cater','wedding','party','buffet','small chops','event','jollof','birthday','naming','cook','meal','guests'],
+  credential_requirements = '{"items":["Food handler''s medical fitness certificate","Local government or state health permit, where required","NAFDAC number if you sell packaged food","Photos of your kitchen and equipment"],"note":"Upload at least one document. A reviewer may ask for a kitchen visit before approval."}' where slug = 'caterer';
+update public.services set keywords = array['solar','inverter','panel','batter','kva','power backup','generator cost','off-grid'],
+  credential_requirements = '{"items":["CAC registration if you operate as a company","Brand or manufacturer training certificates","Electrical competence evidence: trade test, engineering registration or an employer''s letter","Photos and addresses of past installations","The warranty terms you give customers"],"note":"Solar systems carry fire and electrical risk. Reviewers look closely at competence and past installations."}' where slug = 'solar-installer';

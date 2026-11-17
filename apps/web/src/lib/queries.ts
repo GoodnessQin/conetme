@@ -7,7 +7,7 @@ export function useServices() {
   return useQuery({
     queryKey: ["services"], staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("services").select("id, slug, name, description, sort_order, pricing_mode, form_schema, inspection_fee_kobo, keywords, credential_requirements, milestone_template, job_cap_kobo, active").order("sort_order");
+      const { data, error } = await supabase.from("services").select("id, slug, name, description, sort_order, pricing_mode, form_schema, inspection_fee_kobo, keywords, credential_requirements, milestone_template, job_cap_kobo, active, image_path").order("sort_order");
       if (error) throw error;
       return data as Service[];
     },
@@ -29,7 +29,7 @@ export function useMyProvider() {
     queryKey: ["my-provider", session?.user.id], enabled: Boolean(session),
     queryFn: async () => {
       const { data, error } = await supabase.from("providers")
-        .select("id, display_name, bio, years_experience, base_area_id, radius_km, status, level, available_today, rating_avg, rating_count, jobs_completed")
+        .select("id, display_name, slug, tagline, banner_path, bio, years_experience, base_area_id, radius_km, status, level, available_today, rating_avg, rating_count, jobs_completed")
         .eq("user_id", session!.user.id).maybeSingle();
       if (error) throw error;
       return data as ProviderRow | null;

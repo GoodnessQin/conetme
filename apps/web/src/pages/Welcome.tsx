@@ -8,6 +8,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
 import { Logo } from "../components/Logo";
 import { LegalLinks, TERMS_VERSION } from "./Legal";
+import { peekIntent, peekNext, takeIntent, takeNext } from "../lib/entry";
 
 const schema = z.object({ full_name: fullNameSchema });
 
@@ -15,8 +16,8 @@ export default function Welcome() {
   const nav = useNavigate();
   const { session, profile, loading, refresh } = useAuth();
   // Returning users who already gave their name never need this page.
-  useEffect(() => { if (!loading && profile?.full_name) nav("/app", { replace: true }); }, [loading, profile?.full_name, nav]);
-  const [intent, setIntent] = useState<"customer" | "provider">("customer");
+  useEffect(() => { if (!loading && profile?.full_name && profile?.terms_accepted_at) nav("/app", { replace: true }); }, [loading, profile?.full_name, profile?.terms_accepted_at, nav]);
+  const [intent, setIntent] = useState<"customer" | "provider">(() => peekIntent() ?? "customer");
   const [error, setError] = useState<string | null>(null);
   const { register, handleSubmit, formState } = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues: { full_name: profile?.full_name ?? "" } });
 
@@ -26,7 +27,8 @@ export default function Welcome() {
     const { error } = await supabase.from("profiles").update({ full_name: v.full_name, terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION }).eq("id", session.user.id);
     if (error) return setError("We could not save your name. Check your connection and try again.");
     await refresh();
-    nav(intent === "provider" ? "/provider" : "/customer", { replace: true });
+    const next = peekNext(); takeNext(); takeIntent();
+    nav(next ?? (intent === "provider" ? "/provider" : "/customer"), { replace: true });
   }
 
   return (

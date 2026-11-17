@@ -5,7 +5,9 @@ import { ADDRESS_DOC_TYPES, ID_TYPES, NIGERIAN_BANKS } from "@connectme/shared";
 import { supabase } from "../../lib/supabase";
 import { FunctionUnavailable, invokeFn, messageFrom, publicUrl, rpc, uploadFile } from "../../lib/api";
 import { useAuth } from "../../auth/AuthProvider";
-import { useAreas, useMyProvider, useServices } from "../../lib/queries";
+import { useMyProvider, useServices } from "../../lib/queries";
+import { LocationPicker } from "../../components/LocationPicker";
+import { PhoneAdd } from "../../components/PhoneAdd";
 import type { Progress } from "../../lib/types";
 import { DocUploader } from "../../components/DocUploader";
 import { Alert, Avatar, Button, Card, Field, ListSkeleton, PageHeader, ProgressBar, useToast } from "../../components/ui";
@@ -104,7 +106,6 @@ interface StepProps { p: Progress; caseId: string | null; next: () => void; back
 function ProfileStep({ p, next, userId, refresh }: StepProps & { userId: string }) {
   const { profile, refresh: refreshAuth } = useAuth();
   const prov = useMyProvider();
-  const areas = useAreas().data ?? [];
   const [f, setF] = useState({ name: "", years: "", area: "", radius: "10", bio: "" });
   const [photo, setPhoto] = useState<string | null>(null);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false); const [up, setUp] = useState(false);
@@ -131,6 +132,7 @@ function ProfileStep({ p, next, userId, refresh }: StepProps & { userId: string 
   async function save() {
     if (!photo) return setErr("Add a clear profile photo of your face. Customers see it before you arrive.");
     if (f.name.trim().length < 3) return setErr("Enter the name customers will see.");
+    if (!profile?.phone) return setErr("Add and confirm your phone number above first.");
     if (!f.area) return setErr("Choose the area you work from.");
     if (f.years === "" || Number(f.years) < 0 || Number(f.years) > 60) return setErr("Enter your years of experience as a number between 0 and 60.");
     if (f.bio.trim().length < 20) return setErr("Write at least 20 characters about your experience so customers can trust your offers.");
@@ -143,6 +145,7 @@ function ProfileStep({ p, next, userId, refresh }: StepProps & { userId: string 
   }
   return (
     <StepFrame title="Your profile" intro="This is what customers see when they compare offers. Use your real face and name." onSave={save} saving={busy} error={err}>
+      <PhoneAdd />
       <div className="mb-5 flex items-center gap-4">
         <Avatar name={f.name || "You"} path={photo} size={72} />
         <div>
@@ -154,10 +157,7 @@ function ProfileStep({ p, next, userId, refresh }: StepProps & { userId: string 
       <Field label="Name customers will see" htmlFor="pn"><input id="pn" className="input" value={f.name} onChange={set("name")} /></Field>
       <div className="grid gap-x-4 sm:grid-cols-2">
         <Field label="Years of experience" htmlFor="py"><input id="py" className="input" inputMode="numeric" value={f.years} onChange={(e) => setF({ ...f, years: e.target.value.replace(/\D/g, "") })} /></Field>
-        <Field label="Area you work from" htmlFor="pa">
-          <select id="pa" className="input" value={f.area} onChange={set("area")}><option value="">Select…</option>
-            {["Lagos", "Abuja"].map((c) => <optgroup key={c} label={c}>{areas.filter((a) => a.city === c).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</optgroup>)}</select>
-        </Field>
+        <div className="sm:col-span-2"><span className="mb-1 block text-sm font-semibold">Where you work from</span><LocationPicker value={f.area} onChange={(id) => setF((x) => ({ ...x, area: id }))} idPrefix="reg" remember={false} /><div className="mb-4" /></div>
       </div>
       <Field label="How far will you travel? (km)" htmlFor="pr" hint="Requests from beyond this distance are not sent to you. Maximum 30 km."><input id="pr" className="input" inputMode="numeric" value={f.radius} onChange={(e) => setF({ ...f, radius: e.target.value.replace(/\D/g, "") })} /></Field>
       <Field label="About your work" htmlFor="pb" hint="Mention the kinds of jobs you do best, certifications and how you work. No phone numbers or links."><textarea id="pb" rows={4} className="input" value={f.bio} onChange={set("bio")} /></Field>

@@ -7,17 +7,21 @@ import { otpSchema, phoneSchema } from "@connectme/shared";
 import { supabase, isConfigured } from "../lib/supabase";
 import { Logo } from "../components/Logo";
 import { useAuth } from "../auth/AuthProvider";
+import { GoogleButton } from "../components/AuthPrompt";
 
 const phoneForm = z.object({ phone: phoneSchema });
 const codeForm = z.object({ code: otpSchema });
 const RESEND_SECONDS = 30;
 
 function friendly(message: string, login: boolean): string {
+  if (/valid until|test otp|expired.*test|not a valid phone|invalid.*phone/i.test(message)) return message;
   const m = message.toLowerCase();
   if (login && (m.includes("signups not allowed") || m.includes("not allowed for otp") || m.includes("user not found"))) return "We could not find an account with this number. Check it, or create an account instead.";
   if (m.includes("rate") || m.includes("seconds")) return "Too many tries. Wait a moment and try again.";
   if (m.includes("expired") || m.includes("invalid")) return "That code is wrong or has expired. Check it or ask for a new one.";
-  return "Something went wrong. Check your connection and try again.";
+  if (/failed to fetch|network/i.test(message)) return "Could not reach ConnectMe. Check your internet connection and try again.";
+  if (/sms|provider|twilio|sendchamp|termii|phone/i.test(m)) return "We could not send the code right now. Try again in a minute, or continue with Google.";
+  return `We could not send the code. ${message}`;
 }
 
 export default function SignIn() {
@@ -76,6 +80,8 @@ export default function SignIn() {
           {pf.formState.errors.phone && <p role="alert" className="mt-2 text-sm text-danger">{pf.formState.errors.phone.message}</p>}
           {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
           <button className="btn mt-6" disabled={pf.formState.isSubmitting}>Send code</button>
+          <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase text-muted"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
+          <GoogleButton onError={setError} />
         </form>
       ) : (
         <form className="mt-10" onSubmit={cf.handleSubmit(verify)} noValidate>
